@@ -1,0 +1,15 @@
+# Titanic Survival Analysis — Dependencies
+
+# Core data & ML
+pandas>=1.5.0
+numpy>=1.21.0
+scikit-learn>=1.2.0
+joblib>=1.2.0
+
+# Visualizations (for pipeline.py)
+matplotlib>=3.6.0
+seaborn>=0.12.0
+
+# Web application
+flask>=2.3.0
+gunicorn>=21.2.0
