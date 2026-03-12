@@ -143,12 +143,67 @@
     .footer{text-align:center;padding:3rem 0 2rem;border-top:1px solid rgba(201,168,76,0.1);margin-top:3rem;font-size:0.68rem;color:rgba(255,255,255,0.2);letter-spacing:0.12em;text-transform:uppercase}
 
     /* Animations */
-    @keyframes fadeDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeDown{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes pulse-glow{0%,100%{box-shadow:0 0 30px rgba(45,198,83,0.12)}50%{box-shadow:0 0 55px rgba(45,198,83,0.22)}}
-    .survived{animation:pulse-glow 2.5s ease infinite}
+    @keyframes pulse-glow{0%,100%{box-shadow:0 0 30px rgba(45,198,83,0.12)}50%{box-shadow:0 0 55px rgba(45,198,83,0.28)}}
+    @keyframes pulse-glow-red{0%,100%{box-shadow:0 0 30px rgba(230,57,70,0.1)}50%{box-shadow:0 0 55px rgba(230,57,70,0.22)}}
+    @keyframes scaleIn{from{opacity:0;transform:scale(0.92) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+    @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+    @keyframes slideRight{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes floatBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+    .survived{animation:pulse-glow 2.8s ease infinite}
+    .died{animation:pulse-glow-red 2.8s ease infinite}
+
+    /* Scroll reveal */
+    .reveal{opacity:0;transform:translateY(24px);transition:opacity 0.6s ease,transform 0.6s ease}
+    .reveal.visible{opacity:1;transform:translateY(0)}
+
+    /* Card hover lift */
+    .card{transition:box-shadow 0.25s ease,transform 0.25s ease,border-color 0.25s ease}
+    .card:hover{transform:translateY(-3px);box-shadow:0 14px 50px rgba(0,0,0,0.55);border-color:rgba(201,168,76,0.35)}
+
+    /* Result card entrance */
+    .result-card.show{animation:scaleIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both}
+
+    /* Shimmer skeleton */
+    .shimmer-box{border-radius:var(--radius);height:220px;background:linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 75%);background-size:400px 100%;animation:shimmer 1.4s ease infinite;display:none}
+
+    /* Stat counter */
+    .stat-val{display:block;transition:color 0.3s}
+    .hero-stats .stat{cursor:default}
+    .hero-stats .stat:hover .stat-val{color:var(--gold-light)}
+
+    /* Tab transition */
+    .tab-panel{display:none}
+    .tab-panel.active{display:block;animation:fadeUp 0.38s cubic-bezier(0.25,0.46,0.45,0.94) both}
+
+    /* What-if stagger */
+    .whatif-item{opacity:0;animation:none}
+    .whatif-item.animate{animation:slideRight 0.35s ease both}
+
+    /* Archetype active */
+    .archetype-btn.selected{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,0.15)}
+
+    /* Predict button pulse on hover */
+    .btn-predict{transition:opacity 0.2s,transform 0.15s,box-shadow 0.2s}
+    .btn-predict:hover{opacity:1;box-shadow:0 0 24px rgba(201,168,76,0.35);transform:translateY(-1px)}
+    .btn-predict:active{transform:scale(0.98) translateY(0)}
+
+    /* Result icon float */
+    .result-icon{animation:floatBob 3s ease infinite}
+
+    /* Hero rule animate */
+    .hero-rule-line{transition:width 1s ease}
+    .hero-eyebrow{animation:fadeIn 1s 0.2s both}
+
+    /* Img card hover */
+    .img-card{transition:transform 0.25s ease,box-shadow 0.25s ease}
+    .img-card:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.5)}
+    .img-card img{transition:opacity 0.4s ease;opacity:0}
+    .img-card img.loaded{opacity:1}
   </style>
 </head>
 <body>
@@ -234,6 +289,7 @@
         <div class="section-title">Survival Prediction</div>
         <div class="section-sub">Real-time inference · Random Forest</div>
         <div class="spinner" id="spinner"></div>
+        <div class="shimmer-box" id="shimmer-box"></div>
         <div class="result-placeholder" id="result-placeholder">
           <div class="icon">⚓</div>
           <p>Fill in passenger details<br>and press Analyse</p>
@@ -425,13 +481,61 @@
 </footer>
 
 <script>
+  /* ── Tab switching ── */
   function switchTab(id) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + id).classList.add('active');
     event.target.classList.add('active');
+    // re-trigger reveals inside newly shown tab
+    requestAnimationFrame(checkReveal);
   }
 
+  /* ── Scroll reveal ── */
+  function checkReveal() {
+    document.querySelectorAll('.reveal').forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight - 60) el.classList.add('visible');
+    });
+  }
+  window.addEventListener('scroll', checkReveal, {passive:true});
+  window.addEventListener('load', () => { checkReveal(); animateStats(); });
+
+  /* ── Stat counter animation ── */
+  function animateCounter(el, target, isFloat, duration) {
+    const start = performance.now();
+    const from = 0;
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const value = from + (target - from) * ease;
+      el.textContent = isFloat ? value.toFixed(2) : Math.round(value) + (el.dataset.suffix || '');
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function animateStats() {
+    const stats = [
+      {id: null, val: 82,   float: false, suffix: '%'},
+      {id: null, val: 0.86, float: true,  suffix: ''},
+      {id: null, val: 891,  float: false, suffix: ''},
+      {id: null, val: 3,    float: false, suffix: ''},
+    ];
+    document.querySelectorAll('.stat-val').forEach((el, i) => {
+      if (!stats[i]) return;
+      el.dataset.suffix = stats[i].suffix;
+      setTimeout(() => animateCounter(el, stats[i].val, stats[i].float, 1400), i * 120);
+    });
+  }
+
+  /* ── Lazy image fade-in ── */
+  document.querySelectorAll('.img-card img').forEach(img => {
+    if (img.complete) img.classList.add('loaded');
+    else img.addEventListener('load', () => img.classList.add('loaded'));
+  });
+
+  /* ── Archetypes ── */
   const ARCHETYPES = {
     rose:    {pclass:'1',sex:'female',age:17,fare:512,embarked:'S',sibsp:1,parch:1},
     jack:    {pclass:'3',sex:'male',  age:20,fare:7.9,embarked:'S',sibsp:0,parch:0},
@@ -442,16 +546,20 @@
 
   function fillArchetype(key) {
     const a = ARCHETYPES[key];
-    document.getElementById('pclass').value  = a.pclass;
-    document.getElementById('sex').value     = a.sex;
-    document.getElementById('age').value     = a.age;
+    document.getElementById('pclass').value   = a.pclass;
+    document.getElementById('sex').value      = a.sex;
+    document.getElementById('age').value      = a.age;
     document.getElementById('age-display').textContent = a.age;
-    document.getElementById('fare').value    = a.fare;
+    document.getElementById('fare').value     = a.fare;
     document.getElementById('embarked').value = a.embarked;
-    document.getElementById('sibsp').value   = a.sibsp;
-    document.getElementById('parch').value   = a.parch;
+    document.getElementById('sibsp').value    = a.sibsp;
+    document.getElementById('parch').value    = a.parch;
+    // highlight selected archetype
+    document.querySelectorAll('.archetype-btn').forEach(b => b.classList.remove('selected'));
+    event.target.classList.add('selected');
   }
 
+  /* ── Payload helper ── */
   function getPayload() {
     return {
       pclass:   parseInt(document.getElementById('pclass').value),
@@ -469,12 +577,15 @@
     return r.json();
   }
 
+  /* ── Run prediction ── */
   async function runPrediction() {
     const payload = getPayload();
-    document.getElementById('spinner').style.display = 'block';
+    // show shimmer instead of plain spinner
+    document.getElementById('spinner').style.display       = 'none';
+    document.getElementById('shimmer-box').style.display   = 'block';
     document.getElementById('result-placeholder').style.display = 'none';
-    document.getElementById('result-card').style.display = 'none';
-    document.getElementById('whatif-card').style.display = 'none';
+    document.getElementById('result-card').style.display   = 'none';
+    document.getElementById('whatif-card').style.display   = 'none';
     try {
       const data = await postPredict(payload);
       if (data.error) { alert('Error: ' + data.error); return; }
@@ -483,31 +594,54 @@
     } catch(e) {
       alert('Network error. Is the Flask server running?');
     } finally {
-      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('shimmer-box').style.display = 'none';
     }
   }
 
+  /* ── Show result ── */
   function showResult(data, payload) {
     const survived = data.survived === 1;
-    const prob = data.probability;
-    const card = document.getElementById('result-card');
+    const prob     = data.probability;
+    const card     = document.getElementById('result-card');
+
+    // reset animation by removing class, forcing reflow, then re-adding
     card.className = 'result-card ' + (survived ? 'survived' : 'died');
+    card.style.display = 'block';
+    void card.offsetWidth; // reflow
+    card.classList.add('show');
+
     document.getElementById('result-icon').textContent    = survived ? '🛟' : '🌊';
     document.getElementById('result-verdict').textContent = survived ? 'Survived' : 'Did Not Survive';
     document.getElementById('result-desc').textContent    = survived ? 'Passenger likely made it to safety' : 'Passenger likely did not make it';
-    document.getElementById('prob-num').textContent       = (prob * 100).toFixed(1) + '%';
+
+    // animated probability number
+    const probEl = document.getElementById('prob-num');
+    let start = performance.now();
+    const targetPct = prob * 100;
+    (function animProb(now) {
+      const p = Math.min((now - start) / 900, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      probEl.textContent = (targetPct * ease).toFixed(1) + '%';
+      if (p < 1) requestAnimationFrame(animProb);
+    })(start);
+
+    // probability bar
     const fill = document.getElementById('prob-fill');
-    fill.style.background = survived ? 'linear-gradient(90deg,#2DC653,#5eff8a)' : 'linear-gradient(90deg,#E63946,#ff6b75)';
+    fill.style.background = survived
+      ? 'linear-gradient(90deg,#2DC653,#5eff8a)'
+      : 'linear-gradient(90deg,#E63946,#ff6b75)';
     fill.style.width = '0%';
-    setTimeout(() => fill.style.width = (prob * 100).toFixed(1) + '%', 80);
+    fill.style.transition = 'width 1.1s cubic-bezier(0.4,0,0.2,1)';
+    setTimeout(() => fill.style.width = targetPct.toFixed(1) + '%', 100);
+
     const cls = {1:'First Class',2:'Second Class',3:'Third Class'};
     document.getElementById('chip-title').textContent  = data.title;
     document.getElementById('chip-family').textContent = data.family_size + (data.is_alone ? ' (alone)' : '');
     document.getElementById('chip-class').textContent  = cls[payload.pclass];
     document.getElementById('chip-fare').textContent   = '£' + parseFloat(payload.fare).toFixed(2);
-    card.style.display = 'block';
   }
 
+  /* ── What-If with stagger ── */
   async function showWhatIf(base, baseProb) {
     const scenarios = [
       {label:'Class',  change:'Upgrade to 1st',   mod:{...base, pclass:1}},
@@ -518,17 +652,29 @@
       {label:'Fare',   change:'Pay top fare £500',  mod:{...base, pclass:1, fare:500}},
     ];
     const toRun = scenarios.filter(s => JSON.stringify(s.mod) !== JSON.stringify(base));
-    const grid = document.getElementById('whatif-grid');
-    grid.innerHTML = '<div style="grid-column:1/-1;font-size:0.75rem;color:var(--text-muted)">Loading scenarios…</div>';
+    const grid  = document.getElementById('whatif-grid');
+    grid.innerHTML = '<div style="grid-column:1/-1;font-size:0.75rem;color:var(--text-muted);padding:0.5rem 0">Analysing scenarios…</div>';
     document.getElementById('whatif-card').style.display = 'block';
+
     const results = await Promise.all(toRun.map(s => postPredict(s.mod)));
     grid.innerHTML = '';
     toRun.forEach((s, i) => {
       const diff = ((results[i].probability - baseProb) * 100).toFixed(1);
       const cls  = diff > 1 ? 'up' : diff < -1 ? 'down' : 'same';
-      grid.innerHTML += `<div class="whatif-item"><div class="whatif-label">${s.label}</div><div class="whatif-change">${s.change}</div><div class="whatif-prob ${cls}">${diff>0?'+':''}${diff}%</div></div>`;
+      const arrow = diff > 1 ? '↑' : diff < -1 ? '↓' : '→';
+      const el = document.createElement('div');
+      el.className = 'whatif-item';
+      el.style.animationDelay = (i * 80) + 'ms';
+      el.innerHTML = `<div class="whatif-label">${s.label}</div><div class="whatif-change">${s.change}</div><div class="whatif-prob ${cls}">${arrow} ${diff > 0 ? '+' : ''}${diff}%</div>`;
+      grid.appendChild(el);
+      // trigger animation after append
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('animate')));
     });
   }
+
+  /* ── Init reveals on existing cards ── */
+  document.querySelectorAll('.card,.img-card,.whatif-card').forEach(el => el.classList.add('reveal'));
+  checkReveal();
 </script>
 </body>
 </html>
